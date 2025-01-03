@@ -1,1 +1,1 @@
-# pysnake
+# PySnake - змейка на pygame
