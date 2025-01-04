@@ -4,6 +4,7 @@ from typing import Callable
 import pygame
 
 import constants as const
+import database
 import funcs
 
 
@@ -191,6 +192,8 @@ class StartScreen:
         self.all_sprites = pygame.sprite.Group()
         self.buttons_group = pygame.sprite.Group()
 
+        self.db_connections = database.get_connections("data.db")
+
     def handle_event(self, event: pygame.event.Event):
         if event.type == pygame.QUIT:
             self.running = False
@@ -207,8 +210,8 @@ class StartScreen:
         Title(self.all_sprites)
         Rules(self.all_sprites)
         # TODO: добавить работу с базой данных
-        BestScore(0, self.all_sprites)
-        LastScore(0, self.all_sprites)
+        BestScore(database.get_best_score(next(self.db_connections)), self.all_sprites)
+        LastScore(database.get_last_score(next(self.db_connections)), self.all_sprites)
 
         SetEasyLevel(lambda: self.set_difficulty(const.EASY), self.buttons_group, self.all_sprites)
         SetDifficultLevel(lambda: self.set_difficulty(const.DIFFICULT), self.buttons_group, self.all_sprites)

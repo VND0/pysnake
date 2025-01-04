@@ -1,6 +1,7 @@
 import pygame
 
 import constants as const
+import database
 from start_screen import StartScreen
 
 pygame.init()
@@ -22,6 +23,10 @@ def game_start() -> None:
         running = start.running
     # TODO: Вызывать основную игру, принимающую уровень сложности
 
+
+connections = database.get_connections("data.db")
+conn = next(connections)
+database.init_db(conn)
 
 game_start()
 pygame.quit()
