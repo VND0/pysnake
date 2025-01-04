@@ -209,7 +209,6 @@ class StartScreen:
 
         Title(self.all_sprites)
         Rules(self.all_sprites)
-        # TODO: добавить работу с базой данных
         BestScore(database.get_best_score(next(self.db_connections)), self.all_sprites)
         LastScore(database.get_last_score(next(self.db_connections)), self.all_sprites)
 
