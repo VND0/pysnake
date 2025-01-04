@@ -78,13 +78,31 @@ class StatusBar:
         self.score.update()
 
 
+class Board:
+    def __init__(self, vert_cells: int, horiz_cells: int, margin_top: int, cell_size: int):
+        self.v_cells = vert_cells
+        self.h_cells = horiz_cells
+        self.mt = margin_top
+        self.cell_size = cell_size
+
+    def render(self, screen: pygame.Surface):
+        for y in range(self.v_cells):
+            for x in range(self.h_cells):
+                if (x + y) % 2 == 0:
+                    color = const.CELL_COL_1
+                else:
+                    color = const.CELL_COL_2
+                pygame.draw.rect(screen, color,
+                                 (self.cell_size * x, self.mt + self.cell_size * y, self.cell_size, self.cell_size))
+
+
 class Snake:
     def __init__(self, screen: pygame.Surface, difficulty: int):
         self.screen = screen
         self.difficulty = difficulty
         self.running = True
         self.score = 0
-        self.goto: Literal["menu", "finish"] = "menu"
+        self.goto_after: Literal["menu", "finish"] = "menu"
 
     def handle_event(self, event: pygame.event.Event):
         if event.type == pygame.QUIT:
@@ -95,9 +113,11 @@ class Snake:
     def make(self):
         self.status_bar = StatusBar(self.close_by_button, self.screen)
         self.status_bar.make()
+        self.board = Board(const.TILES_VERT, const.TILES_HORIZ, const.STATUS_BAR_H, const.TILE_SIZE)
 
     def draw(self):
         self.status_bar.draw()
+        self.board.render(self.screen)
 
     def close_by_button(self):
         self.running = False

@@ -39,7 +39,7 @@ def run_game(difficulty: int) -> None:
         pygame.display.update()
         running = game.running
 
-    if game.goto == "menu":
+    if game.goto_after == "menu":
         game_start()
     else:
         # TODO: Вызывать финальный экран
