@@ -1,7 +1,7 @@
 import pygame
 
 import constants as const
-import database
+from stats import database
 from start_screen import StartScreen
 
 pygame.init()
@@ -24,7 +24,7 @@ def game_start() -> None:
     # TODO: Вызывать основную игру, принимающую уровень сложности
 
 
-connections = database.get_connections("data.db")
+connections = database.get_connections("stats/data.db")
 conn = next(connections)
 database.init_db(conn)
 

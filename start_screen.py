@@ -4,7 +4,7 @@ from typing import Callable
 import pygame
 
 import constants as const
-import database
+from stats import database
 import funcs
 
 
@@ -192,7 +192,7 @@ class StartScreen:
         self.all_sprites = pygame.sprite.Group()
         self.buttons_group = pygame.sprite.Group()
 
-        self.db_connections = database.get_connections("data.db")
+        self.db_connections = database.get_connections("stats/data.db")
 
     def handle_event(self, event: pygame.event.Event):
         if event.type == pygame.QUIT:
