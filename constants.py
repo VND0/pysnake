@@ -1,11 +1,13 @@
 import pygame
 
+FPS = 60
+
 BLACK = pygame.Color(0, 0, 0)
 WHITE = pygame.Color(255, 255, 255)
 RED = pygame.Color(255, 0, 0)
 GREEN = pygame.Color(0, 255, 0)
 BLUE = pygame.Color(0, 0, 255)
-
+BODY_COL = pygame.Color(91, 123, 249)
 CELL_COL_1 = pygame.Color(55, 56, 60)
 CELL_COL_2 = pygame.Color(40, 41, 44)
 
@@ -17,3 +19,5 @@ STATUS_BAR_H = 30
 TILES_HORIZ = 20
 TILES_VERT = 15
 TILE_SIZE = WIDTH // TILES_HORIZ
+
+R, U, L, D = "RULD"

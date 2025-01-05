@@ -1,13 +1,14 @@
 import pygame
 
 import constants as const
-from game_itself import Snake
+from game_itself import Game
 from start_screen import StartScreen
 from stats import database
 
 pygame.init()
 pygame.display.set_caption("Змейка")
 screen = pygame.display.set_mode(const.SIZE)
+clock = pygame.time.Clock()
 
 
 def game_start() -> None:
@@ -16,6 +17,7 @@ def game_start() -> None:
     start = StartScreen(screen)
     start.make()
     while running:
+        clock.tick(const.FPS)
         for event in pygame.event.get():
             start.handle_event(event)
         screen.fill(const.BLACK)
@@ -29,9 +31,10 @@ def game_start() -> None:
 def run_game(difficulty: int) -> None:
     """Основная игра"""
     running = True
-    game = Snake(screen, difficulty)
+    game = Game(screen, difficulty)
     game.make()
     while running:
+        clock.tick(const.FPS)
         for event in pygame.event.get():
             game.handle_event(event)
         screen.fill(const.BLACK)

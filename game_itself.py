@@ -1,3 +1,4 @@
+from random import randrange
 from typing import Callable, Any, Literal
 
 import pygame
@@ -79,24 +80,84 @@ class StatusBar:
 
 
 class Board:
-    def __init__(self, vert_cells: int, horiz_cells: int, margin_top: int, cell_size: int):
-        self.v_cells = vert_cells
-        self.h_cells = horiz_cells
+    # TODO: поправить бред с "выиграл": нужен только счет
+    def __init__(self, height: int, width: int, margin_top: int, cell_size: int,
+                 callback: Callable[[Literal["won", "lost"], int], Any]):
+        self.board: list[list[None | pygame.Surface]] = [[None for _ in range(width)] for _ in range(height)]
+        self.height = height
+        self.width = width
         self.mt = margin_top
         self.cell_size = cell_size
+        # TODO: убрать словарик
+        # TODO: поправить непрозрачность
+        self.head_states = {
+            "right": funcs.load_image("head_right.png"),
+        }
+        self.collectables = {
+            "apple": funcs.load_image("apple.png"),
+            "cherry": funcs.load_image("cherry.png")
+        }
+        self.game_over = callback
+        self.init_snake()
+        self.add_collectables()
+
+    def init_snake(self):
+        head_y, head_x = 3, 5
+        body_y, body_x = 3, 4
+        tail_y, tail_x = 3, 2
+        self.board[head_y][head_x] = self.head_states["right"]
+        surface = pygame.Surface((self.cell_size,) * 2)
+        surface.fill(const.BODY_COL)
+        for _ in range(2):
+            self.board[body_y][body_x] = surface.copy()
+            body_x -= 1
+        self.board[tail_y][tail_x] = surface.copy()
+
+    def add_collectables(self):
+        for elem in self.collectables.values():
+            while True:
+                # TODO: предусмотреть ситуацию, когда змейка выиграла
+                y = randrange(0, self.height)
+                x = randrange(0, self.width)
+                if self.board[y][x] is None:
+                    self.board[y][x] = elem.copy()
+                    break
 
     def render(self, screen: pygame.Surface):
-        for y in range(self.v_cells):
-            for x in range(self.h_cells):
-                if (x + y) % 2 == 0:
-                    color = const.CELL_COL_1
+        for y in range(self.height):
+            for x in range(self.width):
+                x_pos, y_pos = self.cell_size * x, self.mt + self.cell_size * y
+                content = self.board[y][x]
+                if content is not None:
+                    screen.blit(content, (x_pos, y_pos))
                 else:
-                    color = const.CELL_COL_2
-                pygame.draw.rect(screen, color,
-                                 (self.cell_size * x, self.mt + self.cell_size * y, self.cell_size, self.cell_size))
+                    rect = (x_pos, y_pos) + (self.cell_size,) * 2
+                    if (x + y) % 2 == 0:
+                        color = const.CELL_COL_1
+                    else:
+                        color = const.CELL_COL_2
+                    pygame.draw.rect(screen, color, rect)
+
+    def get_click(self, pos: tuple[int, int], button):
+        cell = self.get_cell(pos)
+        if cell:
+            self.on_click(cell, button)
+        else:
+            print("out")
+
+    def get_cell(self, pos: tuple[int, int]) -> tuple[int, int] | None:
+        mouse_x, mouse_y = pos
+        x = (mouse_x) // self.cell_size
+        y = (mouse_y - self.mt) // self.cell_size
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            return None
+        return x, y
+
+    def on_click(self, pos: tuple[int, int], button) -> None:
+        pass
 
 
-class Snake:
+class Game:
     def __init__(self, screen: pygame.Surface, difficulty: int):
         self.screen = screen
         self.difficulty = difficulty
@@ -109,15 +170,20 @@ class Snake:
             funcs.terminate()
         if event.type == pygame.MOUSEBUTTONDOWN:
             self.status_bar.get_click(event.pos)
+            self.board.get_click(event.pos, event.button)
 
     def make(self):
         self.status_bar = StatusBar(self.close_by_button, self.screen)
         self.status_bar.make()
-        self.board = Board(const.TILES_VERT, const.TILES_HORIZ, const.STATUS_BAR_H, const.TILE_SIZE)
+        self.board = Board(const.TILES_VERT, const.TILES_HORIZ, const.STATUS_BAR_H, const.TILE_SIZE, self.game_over)
 
     def draw(self):
         self.status_bar.draw()
         self.board.render(self.screen)
 
     def close_by_button(self):
+        self.running = False
+
+    def game_over(self, result: Literal["won", "lost"], score: int):
+        print("got it")
         self.running = False
