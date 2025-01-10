@@ -79,11 +79,24 @@ class StatusBar:
         self.score.update()
 
 
+class SnakePart(pygame.Surface):
+    def __init__(self, size: tuple[int, int] | None, image: pygame.Surface | None,
+                 previous: tuple[int | None, int | None]):
+        if size is None and image is None:
+            raise ValueError("Нет данных для создания объекта")
+        super().__init__(size or image.get_size())
+        if image is not None:
+            self.blit(image, (0, 0))
+        self.previous = previous
+
+
 class Board:
-    # TODO: поправить бред с "выиграл": нужен только счет
+    # TODO: поправить "выиграл": нужен только счет
     def __init__(self, height: int, width: int, margin_top: int, cell_size: int,
                  callback: Callable[[Literal["won", "lost"], int], Any]):
-        self.board: list[list[None | pygame.Surface]] = [[None for _ in range(width)] for _ in range(height)]
+        self.board: list[list[None | pygame.Surface | SnakePart]] = [
+            [None for _ in range(width)] for _ in range(height)
+        ]
         self.height = height
         self.width = width
         self.mt = margin_top
@@ -98,20 +111,30 @@ class Board:
             "cherry": funcs.load_image("cherry.png")
         }
         self.game_over = callback
+        self.error_occurred = False
         self.init_snake()
         self.add_collectables()
 
     def init_snake(self):
         head_y, head_x = 3, 5
-        body_y, body_x = 3, 4
-        tail_y, tail_x = 3, 2
-        self.board[head_y][head_x] = self.head_states["right"]
-        surface = pygame.Surface((self.cell_size,) * 2)
-        surface.fill(const.BODY_COL)
-        for _ in range(2):
-            self.board[body_y][body_x] = surface.copy()
-            body_x -= 1
-        self.board[tail_y][tail_x] = surface.copy()
+
+        head = SnakePart(None, self.head_states["right"], (head_y, head_x - 1))
+        self.board[head_y][head_x] = head
+
+        body = SnakePart((self.cell_size,) * 2, None, (head_y, head_x - 2))
+        body.fill(const.BODY_COL)
+        self.board[head_y][head_x - 1] = body
+
+        body = body.copy()
+        body.previous = (head_y, head_x - 3)
+        self.board[head_y][head_x - 2] = body
+
+        body = body.copy()
+        body.previous = (None, None)
+        self.board[head_y][head_x - 3] = body
+        self.direction = const.R
+
+        self.head_pos = (head_y, head_x)
 
     def add_collectables(self):
         for elem in self.collectables.values():
@@ -142,12 +165,10 @@ class Board:
         cell = self.get_cell(pos)
         if cell:
             self.on_click(cell, button)
-        else:
-            print("out")
 
     def get_cell(self, pos: tuple[int, int]) -> tuple[int, int] | None:
         mouse_x, mouse_y = pos
-        x = (mouse_x) // self.cell_size
+        x = mouse_x // self.cell_size
         y = (mouse_y - self.mt) // self.cell_size
         if not (0 <= x < self.width and 0 <= y < self.height):
             return None
@@ -155,6 +176,34 @@ class Board:
 
     def on_click(self, pos: tuple[int, int], button) -> None:
         pass
+
+    def update(self):
+        h_y, h_x = self.head_pos
+        head = self.board[h_y][h_x]
+        if self.direction == const.R:
+            try:
+                self.board[h_y][h_x + 1] = head
+            except IndexError:
+                self.error_occurred = True
+                print("ERROR")
+                return
+            self.head_pos = (h_y, h_x + 1)
+            y, x = head.previous
+            head.previous = (h_y, h_x)
+            self.board[h_y][h_x] = None
+        else:
+            raise NotImplementedError
+
+        to_x, to_y = h_x, h_y
+        while x is not None and y is not None:
+            part = self.board[y][x]
+            if part is None:
+                break
+            self.board[to_y][to_x] = part
+            self.board[y][x] = None
+            to_x, to_y = x, y
+            y, x = part.previous
+            part.previous = (to_y, to_x)
 
 
 class Game:
@@ -164,6 +213,7 @@ class Game:
         self.running = True
         self.score = 0
         self.goto_after: Literal["menu", "finish"] = "menu"
+        self.make()
 
     def handle_event(self, event: pygame.event.Event):
         if event.type == pygame.QUIT:
@@ -181,9 +231,11 @@ class Game:
         self.status_bar.draw()
         self.board.render(self.screen)
 
+    def update(self):
+        self.board.update()
+
     def close_by_button(self):
         self.running = False
 
     def game_over(self, result: Literal["won", "lost"], score: int):
-        print("got it")
         self.running = False

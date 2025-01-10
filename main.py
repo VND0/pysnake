@@ -32,12 +32,16 @@ def run_game(difficulty: int) -> None:
     """Основная игра"""
     running = True
     game = Game(screen, difficulty)
-    game.make()
+    delta_time = 0
     while running:
         clock.tick(const.FPS)
         for event in pygame.event.get():
             game.handle_event(event)
         screen.fill(const.BLACK)
+        delta_time += 1 / const.FPS
+        if delta_time >= const.SEC_PER_TILE:  # В константах есть время стояния на клеточке
+            game.update()
+            delta_time -= const.SEC_PER_TILE
         game.draw()
         pygame.display.update()
         running = game.running
