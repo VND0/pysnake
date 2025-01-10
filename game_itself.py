@@ -91,9 +91,7 @@ class SnakePart(pygame.Surface):
 
 
 class Board:
-    # TODO: поправить "выиграл": нужен только счет
-    def __init__(self, height: int, width: int, margin_top: int, cell_size: int,
-                 callback: Callable[[Literal["won", "lost"], int], Any]):
+    def __init__(self, height: int, width: int, margin_top: int, cell_size: int, callback: Callable[[int], Any]):
         self.board: list[list[None | pygame.Surface | SnakePart]] = [
             [None for _ in range(width)] for _ in range(height)
         ]
@@ -101,8 +99,6 @@ class Board:
         self.width = width
         self.mt = margin_top
         self.cell_size = cell_size
-        # TODO: убрать словарик
-        # TODO: поправить непрозрачность
         self.head_states = {
             "right": funcs.load_image("head_right.png"),
         }
@@ -133,7 +129,6 @@ class Board:
         body.previous = (None, None)
         self.board[head_y][head_x - 3] = body
         self.direction = const.R
-
         self.head_pos = (head_y, head_x)
 
     def add_collectables(self):
@@ -180,19 +175,27 @@ class Board:
     def update(self):
         h_y, h_x = self.head_pos
         head = self.board[h_y][h_x]
-        if self.direction == const.R:
-            try:
+        try:
+            if self.direction == const.R:
                 self.board[h_y][h_x + 1] = head
-            except IndexError:
-                self.error_occurred = True
-                print("ERROR")
-                return
-            self.head_pos = (h_y, h_x + 1)
-            y, x = head.previous
-            head.previous = (h_y, h_x)
-            self.board[h_y][h_x] = None
-        else:
-            raise NotImplementedError
+                self.head_pos = (h_y, h_x + 1)
+            elif self.direction == const.D:
+                self.board[h_y + 1][h_x] = head
+                self.head_pos = (h_y + 1, h_x)
+            elif self.direction == const.L:
+                self.board[h_y][h_x - 1] = head
+                self.head_pos = (h_y, h_x - 1)
+            elif self.direction == const.U:  # TODO: Поправить выход за экран
+                self.board[h_y - 1][h_x] = head
+                self.head_pos = (h_y - 1, h_x)
+
+        except IndexError:
+            self.error_occurred = True
+            return
+
+        y, x = head.previous
+        head.previous = (h_y, h_x)
+        self.board[h_y][h_x] = None
 
         to_x, to_y = h_x, h_y
         while x is not None and y is not None:
@@ -237,5 +240,5 @@ class Game:
     def close_by_button(self):
         self.running = False
 
-    def game_over(self, result: Literal["won", "lost"], score: int):
+    def game_over(self, score: int):
         self.running = False
