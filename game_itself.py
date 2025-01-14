@@ -38,9 +38,9 @@ class Score(pygame.sprite.Sprite):
         self.w = const.WIDTH - 4 - const.STATUS_BAR_H
         self.h = const.STATUS_BAR_H - 4
         self.score = -1
-        self.update()
+        self.increment()
 
-    def update(self):
+    def increment(self):
         self.score += 1
         content = pygame.Surface((self.w, self.h))
 
@@ -76,7 +76,7 @@ class StatusBar:
             self.callback()
 
     def score_increment(self):
-        self.score.update()
+        self.score.increment()
 
 
 class SnakePart(pygame.Surface):
@@ -91,7 +91,8 @@ class SnakePart(pygame.Surface):
 
 
 class Board:
-    def __init__(self, height: int, width: int, margin_top: int, cell_size: int, callback: Callable[[int], Any]):
+    def __init__(self, height: int, width: int, margin_top: int, cell_size: int, on_earned_score: Callable[[], Any],
+                 on_game_over: Callable[[], Any]):
         self.board: list[list[None | pygame.Surface | SnakePart]] = [
             [None for _ in range(width)] for _ in range(height)
         ]
@@ -106,8 +107,9 @@ class Board:
             "apple": funcs.load_image("apple.png"),
             "cherry": funcs.load_image("cherry.png")
         }
-        self.game_over = callback
-        self.error_occurred = False
+        self.earned_score = on_earned_score
+        self.game_over = on_game_over
+
         self.init_snake()
         self.add_collectables()
 
@@ -190,7 +192,7 @@ class Board:
                 self.head_pos = (h_y - 1, h_x)
 
         except IndexError:
-            self.error_occurred = True
+            self.game_over()
             return
 
         y, x = head.previous
@@ -228,7 +230,11 @@ class Game:
     def make(self):
         self.status_bar = StatusBar(self.close_by_button, self.screen)
         self.status_bar.make()
-        self.board = Board(const.TILES_VERT, const.TILES_HORIZ, const.STATUS_BAR_H, const.TILE_SIZE, self.game_over)
+        self.board = Board(const.TILES_VERT, const.TILES_HORIZ, const.STATUS_BAR_H, const.TILE_SIZE,
+                           self.increment_score, self.game_over)
+
+    def increment_score(self) -> None:
+        self.score += 1
 
     def draw(self):
         self.status_bar.draw()
@@ -240,5 +246,6 @@ class Game:
     def close_by_button(self):
         self.running = False
 
-    def game_over(self, score: int):
+    def game_over(self):
         self.running = False
+        self.goto_after = "finish"
