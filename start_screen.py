@@ -79,8 +79,6 @@ class BestScore(Score):
         text_w, text_h = text.get_size()
         content.blit(text, (self.width - text_w, (self.height - text_h) / 2))
 
-        # pygame.draw.line(content, const.BLUE, (0, 0), (self.width, self.height))
-
         self.image = content
         self.rect = content.get_rect().move(280, 50)
 
@@ -99,8 +97,6 @@ class LastScore(Score):
         text = self.font_score.render(self.score, 1, const.BLUE)
         text_w, text_h = text.get_size()
         content.blit(text, (self.width - text_w, (self.height - text_h) / 2))
-
-        # pygame.draw.line(content, const.BLUE, (0, 0), (self.width, self.height))
 
         self.image = content
         self.rect = content.get_rect().move(280, 125)
