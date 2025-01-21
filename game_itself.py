@@ -90,10 +90,25 @@ class SnakePart(pygame.Surface):
         self.previous = previous
 
 
+class AngleTopTile(pygame.Surface):
+    def __init__(self, size: tuple[int, int], next_direction: const.DIRECTION | None):
+        super().__init__(size)
+        self.fill(const.ANGLE_TOP_COL)
+        self.next_direction = next_direction
+
+
+class AngleGoToTile(pygame.Surface):
+    def __init__(self, size: tuple[int, int]):
+        super().__init__(size)
+        self.fill(const.ANGLE_GOTO_COL)
+
+
+BOARD_CONTENT = list[list[None | pygame.Surface | SnakePart | AngleTopTile | AngleGoToTile]]
+
+
 class Board:
-    def __init__(self, height: int, width: int, margin_top: int, cell_size: int, on_earned_score: Callable[[], Any],
-                 on_game_over: Callable[[], Any]):
-        self.board: list[list[None | pygame.Surface | SnakePart]] = [
+    def __init__(self, height: int, width: int, margin_top: int, cell_size: int, on_earned_score: Callable[[], Any]):
+        self.board: BOARD_CONTENT = [
             [None for _ in range(width)] for _ in range(height)
         ]
         self.height = height
@@ -108,7 +123,9 @@ class Board:
             "cherry": funcs.load_image("cherry.png")
         }
         self.earned_score = on_earned_score
-        self.game_over = on_game_over
+
+        self.angle_top: tuple[int, int] | None = None
+        self.angle_goto: tuple[int, int] | None = None
 
         self.init_snake()
         self.add_collectables()
@@ -143,6 +160,41 @@ class Board:
                     self.board[y][x] = elem.copy()
                     break
 
+    def can_go_there(self, x0: int, y0: int, x1: int, y1: int, direction: const.DIRECTION) -> bool:
+        if direction == const.R:
+            return y0 == y1 and x0 < x1
+        elif direction == const.U:
+            return x0 == x1 and y0 > y1
+        elif direction == const.L:
+            return y0 == y1 and x0 > x1
+        elif direction == const.D:
+            return x0 == x1 and y0 < y1
+
+    def get_next_direction(self, x0: int, y0: int, x1: int, y1: int) -> const.DIRECTION | None:
+        direction = None
+        if x0 == x1:
+            if y0 < y1:
+                direction = const.D
+            elif y0 > y1:
+                direction = const.U
+        elif y0 == y1:
+            if x0 < x1:
+                direction = const.R
+            elif x0 > x1:
+                direction = const.L
+        if direction is None:  # Перемещение по диагонали или стояние на месте
+            return None
+
+        # Чтобы змейка не ушла в себя или не продолжила двигаться в том же направлении
+        right_left = (const.R, const.L)
+        if self.direction in right_left and direction in right_left:
+            return None
+        up_down = (const.U, const.D)
+        if self.direction in up_down and direction in up_down:
+            return None
+
+        return direction
+
     def render(self, screen: pygame.Surface):
         for y in range(self.height):
             for x in range(self.width):
@@ -172,33 +224,67 @@ class Board:
         return x, y
 
     def on_click(self, pos: tuple[int, int], button) -> None:
-        pass
+        clck_x, clck_y = pos
+        if button != pygame.BUTTON_LEFT or self.board[clck_y][clck_x] is SnakePart:
+            return
+
+        if not self.board[clck_y][clck_x]:
+            if not self.angle_top:
+                if self.can_go_there(*self.head_pos[::-1], *pos, self.direction):
+                    self.angle_top = pos
+                    self.board[clck_y][clck_x] = AngleTopTile((self.cell_size,) * 2, None)
+            elif not self.angle_goto:
+                at_x, at_y = self.angle_top
+                direction = self.get_next_direction(at_x, at_y, clck_x, clck_y)
+                if direction is None or not self.can_go_there(at_x, at_y, clck_x, clck_y, direction):
+                    self.angle_top = self.board[at_y][at_x] = None
+                    return
+
+                self.angle_goto = pos
+                self.board[clck_y][clck_x] = AngleGoToTile((self.cell_size,) * 2)
+                self.board[at_y][at_x].next_direction = direction
+            else:
+                # Если все данные угла поворота уже есть, то мы считаем, что пользователь хочет пойти по-другому
+                # Просто удаляем обе клеточки
+                self.del_angle_top()
+                self.del_angle_goto()
+                self.on_click(pos, button)
 
     def update(self):
         h_y, h_x = self.head_pos
         head = self.board[h_y][h_x]
-        try:
-            if self.direction == const.R:
-                self.board[h_y][h_x + 1] = head
-                self.head_pos = (h_y, h_x + 1)
-            elif self.direction == const.D:
-                self.board[h_y + 1][h_x] = head
-                self.head_pos = (h_y + 1, h_x)
-            elif self.direction == const.L:
-                self.board[h_y][h_x - 1] = head
-                self.head_pos = (h_y, h_x - 1)
-            elif self.direction == const.U:  # TODO: Поправить выход за экран
-                self.board[h_y - 1][h_x] = head
-                self.head_pos = (h_y - 1, h_x)
 
-        except IndexError:
-            self.game_over()
-            return
+        if self.direction == const.R:
+            next_y, next_x = h_y, h_x + 1
+        elif self.direction == const.U:
+            next_y, next_x = h_y - 1, h_x
+        elif self.direction == const.L:
+            next_y, next_x = h_y, h_x - 1
+        else:
+            next_y, next_x = h_y + 1, h_x
 
+        if not (0 <= next_x < len(self.board[0])):
+            raise SnakeGameOverError
+        if not (0 <= next_y < len(self.board)):
+            raise SnakeGameOverError
+
+        self.head_pos = (next_y, next_x)
+        if self.head_pos[::-1] == self.angle_top:
+            if self.angle_goto:
+                self.direction = self.board[next_y][next_x].next_direction
+                self.del_angle_top()
+                self.del_angle_goto()
+            else:
+                self.del_angle_top()
+        self.board[next_y][next_x] = head
+
+        self.move_snake_after_head(h_x, h_y, head)
+
+    def move_snake_after_head(self, h_x, h_y, head):
+        # Я и сам не понимаю, как это работает
         y, x = head.previous
         head.previous = (h_y, h_x)
         self.board[h_y][h_x] = None
-
         to_x, to_y = h_x, h_y
         while x is not None and y is not None:
             part = self.board[y][x]
@@ -209,6 +295,18 @@ class Board:
             to_x, to_y = x, y
             y, x = part.previous
             part.previous = (to_y, to_x)
+
+    def del_angle_top(self):
+        at_x, at_y = self.angle_top
+        self.board[at_y][at_x] = self.angle_top = None
+
+    def del_angle_goto(self):
+        goto_x, goto_y = self.angle_goto
+        self.board[goto_y][goto_x] = self.angle_goto = None
+
+
+class SnakeGameOverError(Exception):
+    pass
 
 
 class Game:
@@ -231,7 +329,7 @@ class Game:
         self.status_bar = StatusBar(self.close_by_button, self.screen)
         self.status_bar.make()
         self.board = Board(const.TILES_VERT, const.TILES_HORIZ, const.STATUS_BAR_H, const.TILE_SIZE,
-                           self.increment_score, self.game_over)
+                           self.increment_score)
 
     def increment_score(self) -> None:
         self.score += 1
@@ -241,7 +339,10 @@ class Game:
         self.board.render(self.screen)
 
     def update(self):
-        self.board.update()
+        try:
+            self.board.update()
+        except SnakeGameOverError:
+            self.game_over()
 
     def close_by_button(self):
         self.running = False
