@@ -1,3 +1,4 @@
+import threading
 from random import randrange
 from typing import Callable, Any, Literal
 
@@ -104,6 +105,30 @@ class AngleGoToTile(pygame.Surface):
 
 
 BOARD_CONTENT = list[list[None | pygame.Surface | SnakePart | AngleTopTile | AngleGoToTile]]
+
+
+def rotate_surface(angle: int, position: tuple[int, int], board: BOARD_CONTENT) -> None:
+    def rotate():
+        clock = pygame.time.Clock()
+        angle_per_frame = angle / (const.SEC_PER_TILE / 2 * const.FPS)
+        current_angle = 0
+
+        y, x = position
+        to_be_turned = board[y][x]
+        original = SnakePart(to_be_turned.get_size(), to_be_turned, board[y][x].previous)
+        while abs(current_angle) < abs(angle):
+            current_angle += angle_per_frame
+            if abs(current_angle) > abs(angle):
+                current_angle = angle
+
+            rotated_surface = pygame.transform.rotate(original, current_angle)
+            to_be_turned.fill(const.BLACK)
+            to_be_turned.blit(rotated_surface, (0, 0))
+
+            clock.tick(const.FPS)
+
+    thread = threading.Thread(target=rotate)
+    thread.start()
 
 
 class Board:
@@ -268,17 +293,35 @@ class Board:
         if not (0 <= next_y < len(self.board)):
             raise SnakeGameOverError
 
+        change_direction = False
         self.head_pos = (next_y, next_x)
         if self.head_pos[::-1] == self.angle_top:
             if self.angle_goto:
-                self.direction = self.board[next_y][next_x].next_direction
+                change_direction = True
+                next_direction = self.board[next_y][next_x].next_direction
                 self.del_angle_top()
                 self.del_angle_goto()
+                self.direction = next_direction
             else:
                 self.del_angle_top()
         self.board[next_y][next_x] = head
-
+        if change_direction:
+            self.on_direction_change(self.direction, next_direction)
         self.move_snake_after_head(h_x, h_y, head)
+
+    def on_direction_change(self, prev_direction: const.DIRECTION, next_direction: const.DIRECTION):
+        all_dirs = const.R + const.U + const.L + const.D
+        # Тут R->U->L->D->R..., как на тригонометрической окружности почти
+        # Если идем по ней - угол 90, иначе - -90
+        print(all_dirs)
+        print(prev_direction, next_direction)
+        print(all_dirs[(all_dirs.index(prev_direction) + 1) % len(all_dirs)])
+
+        if all_dirs[(all_dirs.index(prev_direction) + 1) % len(all_dirs)] == next_direction:
+            angle = 90
+        else:
+            angle = -90
+        rotate_surface(angle, self.head_pos, self.board)
 
     def move_snake_after_head(self, h_x, h_y, head):
         # Я и сам не понимаю, как это работает
