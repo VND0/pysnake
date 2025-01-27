@@ -11,13 +11,41 @@ import funcs
 class CloseButton(pygame.sprite.Sprite):
     def __init__(self, *groups):
         super().__init__(*groups)
-        w = h = const.STATUS_BAR_H
-        content = pygame.Surface((w - 6, h - 6))
-        w, h = content.get_size()
-        pygame.draw.line(content, const.RED, (3, 3), (w - 3, h - 3), 2)
-        pygame.draw.line(content, const.RED, (w - 3, 3), (3, h - 3), 2)
-        self.image = content
-        self.rect = content.get_rect().move(3, 3)
+        self.x, self.y = 3, 3
+        self.width = self.height = const.STATUS_BAR_H - self.y * 2
+        self.frames = []
+        self.index = 0
+        self.get_frames()
+        self.image = self.frames[self.index]
+        self.rect = self.image.get_rect().move(self.x, self.y)
+
+        self.skip = 0
+
+    def get_frames(self):
+        rows, cols, side = 8, 6, 32
+        total = 38
+        image = funcs.load_image("cross.png", False)
+        counter = 0
+        for y in range(rows):
+            for x in range(cols):
+                counter += 1
+                if counter > total:
+                    return
+                frame = pygame.transform.scale(
+                    image.subsurface(
+                        pygame.Rect(x * image.get_width() // cols, y * image.get_height() // rows, side, side)
+                    ),
+                    (self.width, self.height),
+                )
+                self.frames.append(frame)
+
+    def update(self, *args, **kwargs):
+        self.skip += 1
+        if self.skip <= 2:
+            return
+        self.skip = 0
+        self.index = (self.index + 1) % len(self.frames)
+        self.image = self.frames[self.index]
 
 
 class Lattice(pygame.sprite.Sprite):
@@ -71,6 +99,7 @@ class StatusBar:
 
     def draw(self):
         self.all_sprites.draw(self.screen)
+        self.all_sprites.update()
 
     def get_click(self, pos: tuple[int, int]):
         if self.close_button.rect.collidepoint(*pos):
