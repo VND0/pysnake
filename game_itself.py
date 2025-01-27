@@ -141,7 +141,7 @@ BOARD_CONTENT = list[list[None | pygame.Surface | SnakePart | AngleTopTile | Ang
 def rotate_surface(angle: int, position: tuple[int, int], board: BOARD_CONTENT) -> None:
     def rotate():
         clock = pygame.time.Clock()
-        angle_per_frame = angle / (const.SEC_PER_TILE / 2 * const.FPS)
+        angle_per_frame = angle / (const.SEC_PER_TILE * const.FPS)
         current_angle = 0
 
         y, x = position
