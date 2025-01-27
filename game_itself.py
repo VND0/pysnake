@@ -22,28 +22,30 @@ class CloseButton(pygame.sprite.Sprite):
         self.skip = 0
 
     def get_frames(self):
-        rows, cols, side = 8, 6, 32
+        rows, cols, side = 7, 6, 32
         total = 38
         image = funcs.load_image("cross.png", False)
         counter = 0
+
+        rect = pygame.Rect(0, 0, image.get_width() // cols, image.get_height() // rows)
+
         for y in range(rows):
             for x in range(cols):
                 counter += 1
                 if counter > total:
                     return
                 frame = pygame.transform.scale(
-                    image.subsurface(
-                        pygame.Rect(x * image.get_width() // cols, y * image.get_height() // rows, side, side)
-                    ),
-                    (self.width, self.height),
+                    image.subsurface(pygame.Rect((x * rect.w, y * rect.h), rect.size)),
+                    (self.width, self.height)
                 )
                 self.frames.append(frame)
 
     def update(self, *args, **kwargs):
         self.skip += 1
-        if self.skip <= 2:
+        if self.skip <= 6:
             return
         self.skip = 0
+
         self.index = (self.index + 1) % len(self.frames)
         self.image = self.frames[self.index]
 
