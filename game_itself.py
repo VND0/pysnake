@@ -295,6 +295,7 @@ class Board:
 
         change_direction = False
         self.head_pos = (next_y, next_x)
+        current_direction = self.direction
         if self.head_pos[::-1] == self.angle_top:
             if self.angle_goto:
                 change_direction = True
@@ -306,17 +307,13 @@ class Board:
                 self.del_angle_top()
         self.board[next_y][next_x] = head
         if change_direction:
-            self.on_direction_change(self.direction, next_direction)
+            self.on_direction_change(current_direction, next_direction)
         self.move_snake_after_head(h_x, h_y, head)
 
     def on_direction_change(self, prev_direction: const.DIRECTION, next_direction: const.DIRECTION):
         all_dirs = const.R + const.U + const.L + const.D
         # Тут R->U->L->D->R..., как на тригонометрической окружности почти
         # Если идем по ней - угол 90, иначе - -90
-        print(all_dirs)
-        print(prev_direction, next_direction)
-        print(all_dirs[(all_dirs.index(prev_direction) + 1) % len(all_dirs)])
-
         if all_dirs[(all_dirs.index(prev_direction) + 1) % len(all_dirs)] == next_direction:
             angle = 90
         else:
@@ -324,7 +321,6 @@ class Board:
         rotate_surface(angle, self.head_pos, self.board)
 
     def move_snake_after_head(self, h_x, h_y, head):
-        # Я и сам не понимаю, как это работает
         y, x = head.previous
         head.previous = (h_y, h_x)
         self.board[h_y][h_x] = None
