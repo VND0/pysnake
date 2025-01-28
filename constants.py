@@ -24,7 +24,7 @@ TILE_SIZE = WIDTH // TILES_HORIZ
 
 R, U, L, D = "RULD"
 DIRECTION = Literal["R", "U", "L", "D"]
-SEC_PER_TILE = 0.4
+SEC_PER_TILE = 0.3
 
 ANGLE_TOP_COL = pygame.Color(240, 167, 50)
 ANGLE_GOTO_COL = pygame.Color(149, 113, 57)

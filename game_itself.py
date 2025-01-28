@@ -171,25 +171,20 @@ class Board:
         self.width = width
         self.mt = margin_top
         self.cell_size = cell_size
-        self.head_states = {
-            "right": funcs.load_image("head_right.png"),
-        }
-        self.collectables = {
-            "apple": funcs.load_image("apple.png"),
-            "cherry": funcs.load_image("cherry.png")
-        }
+        self.head_image = funcs.load_image("head_right.png")
+        self.apple_image = funcs.load_image("apple.png")
         self.earned_score = on_earned_score
 
         self.angle_top: tuple[int, int] | None = None
         self.angle_goto: tuple[int, int] | None = None
 
         self.init_snake()
-        self.add_collectables()
+        self.add_apple()
 
     def init_snake(self):
         head_y, head_x = 3, 5
 
-        head = SnakePart(None, self.head_states["right"], (head_y, head_x - 1))
+        head = SnakePart(None, self.head_image, (head_y, head_x - 1))
         self.board[head_y][head_x] = head
 
         body = SnakePart((self.cell_size,) * 2, None, (head_y, head_x - 2))
@@ -206,15 +201,26 @@ class Board:
         self.direction = const.R
         self.head_pos = (head_y, head_x)
 
-    def add_collectables(self):
-        for elem in self.collectables.values():
-            while True:
-                # TODO: предусмотреть ситуацию, когда змейка выиграла
-                y = randrange(0, self.height)
-                x = randrange(0, self.width)
-                if self.board[y][x] is None:
-                    self.board[y][x] = elem.copy()
+    def add_apple(self):
+        got_none = False
+        for row in self.board:
+            if got_none:
+                break
+            for val in row:
+                if val is None:
+                    got_none = True
                     break
+        if not got_none:
+            raise SnakeGameOverError
+
+        while True:
+            y = randrange(0, self.height)
+            x = randrange(0, self.width)
+            if not (2 <= y < len(self.board) - 2 and 2 <= x < len(self.board[0])):
+                continue
+            if self.board[y][x] is None:
+                self.board[y][x] = self.apple_image.subsurface(self.apple_image.get_rect())
+                break
 
     def can_go_there(self, x0: int, y0: int, x1: int, y1: int, direction: const.DIRECTION) -> bool:
         if direction == const.R:
@@ -336,6 +342,9 @@ class Board:
                 self.direction = next_direction
             else:
                 self.del_angle_top()
+        elif self.board[next_y][next_x] and self.board[next_y][next_x].get_parent() == self.apple_image:
+            self.add_apple()
+            self.earned_score()
         self.board[next_y][next_x] = head
         if change_direction:
             self.on_direction_change(current_direction, next_direction)
@@ -403,6 +412,7 @@ class Game:
 
     def increment_score(self) -> None:
         self.score += 1
+        self.status_bar.score_increment()
 
     def draw(self):
         self.status_bar.draw()
