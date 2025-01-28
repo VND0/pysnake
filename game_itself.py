@@ -333,6 +333,8 @@ class Board:
         change_direction = False
         self.head_pos = (next_y, next_x)
         current_direction = self.direction
+
+        # Попали на вершину угла поворота
         if self.head_pos[::-1] == self.angle_top:
             if self.angle_goto:
                 change_direction = True
@@ -342,13 +344,25 @@ class Board:
                 self.direction = next_direction
             else:
                 self.del_angle_top()
+            self.board[next_y][next_x] = head
+            self.move_snake_after_head(h_x, h_y, head)
+        # Попали на яблоко
         elif self.board[next_y][next_x] and self.board[next_y][next_x].get_parent() == self.apple_image:
-            self.add_apple()
             self.earned_score()
-        self.board[next_y][next_x] = head
+            # Двигаем голову, вставляем новый кусочек змеи между
+            self.board[next_y][next_x] = head
+            new_part = SnakePart((self.cell_size,) * 2, None, head.previous)
+            new_part.fill(const.BODY_COL)
+            self.board[h_y][h_x] = new_part
+            head.previous = (h_y, h_x)
+
+            self.add_apple()
+        else:
+            self.board[next_y][next_x] = head
+            self.move_snake_after_head(h_x, h_y, head)
+
         if change_direction:
             self.on_direction_change(current_direction, next_direction)
-        self.move_snake_after_head(h_x, h_y, head)
 
     def on_direction_change(self, prev_direction: const.DIRECTION, next_direction: const.DIRECTION):
         all_dirs = const.R + const.U + const.L + const.D
