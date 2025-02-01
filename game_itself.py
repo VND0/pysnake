@@ -243,11 +243,13 @@ class Board:
         self.head_pos = (next_y, next_x)
         current_direction = self.direction
 
+        next_tile = self.board[next_y][next_x]
+
         # Попали на вершину угла поворота
         if self.head_pos[::-1] == self.angle_top:
             if self.angle_goto:
                 change_direction = True
-                next_direction = self.board[next_y][next_x].next_direction
+                next_direction = next_tile.next_direction
                 self.del_angle_top()
                 self.del_angle_goto()
                 self.direction = next_direction
@@ -255,15 +257,16 @@ class Board:
                 self.del_angle_top()
             self.board[next_y][next_x] = head
             self.move_snake_after_head(h_x, h_y, head)
-        elif type(self.board[next_y][next_x]) is Apple:
+        elif type(next_tile) is Apple:
             self.earned_score()
             # Двигаем голову, вставляем новый кусочек змеи между, остальную змейку не двигаем
             self.board[next_y][next_x] = head
             new_part = BodyPart(head.previous)
             self.board[h_y][h_x] = new_part
             head.previous = (h_y, h_x)
-
             self.add_apple()
+        elif type(next_tile) is BodyPart:
+            raise SnakeGameOverError  # Врезались в себя
         else:
             self.board[next_y][next_x] = head
             self.move_snake_after_head(h_x, h_y, head)
