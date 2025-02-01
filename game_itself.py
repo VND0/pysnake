@@ -15,7 +15,7 @@ class SnakeGameOverError(Exception):
 
 class Head(pygame.Surface):
     def __init__(self, previous: tuple[int, int]):
-        self.image = funcs.load_image("head_right.png")
+        self.image = funcs.load_image("head.png")
         super().__init__(self.image.get_size())
         self.blit(self.image, (0, 0))
         self.previous = previous
