@@ -4,8 +4,8 @@ from typing import Callable
 import pygame
 
 import constants as const
-from stats import database
 import funcs
+from stats import database
 
 
 class Title(pygame.sprite.Sprite):
@@ -136,6 +136,9 @@ class SetEasyLevel(ClickableSprite):
         self.rect = content.get_rect().move(40, 275)
 
 
+""
+
+
 class SetDifficultLevel(ClickableSprite):
     def make(self):
         content = pygame.Surface((self.width, self.height))
@@ -194,7 +197,7 @@ class StartScreen:
         if event.type == pygame.QUIT:
             self.running = False
             funcs.terminate()
-        elif event.type == pygame.MOUSEBUTTONDOWN:
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == pygame.BUTTON_LEFT:
             for button in self.buttons_group.sprites():
                 clicked = button.get_click(event.pos)
                 if clicked:

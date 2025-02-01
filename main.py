@@ -1,6 +1,7 @@
 import pygame
 
 import constants as const
+import final_screen
 from game_itself import Game
 from start_screen import StartScreen
 from stats import database
@@ -49,8 +50,24 @@ def run_game(difficulty: int) -> None:
     if game.goto_after == "menu":
         game_start()
     else:
-        # TODO: Вызывать финальный экран
-        raise NotImplementedError
+        finish_screen(game.score)
+
+
+def finish_screen(score: int) -> None:
+    running = True
+    finish = final_screen.FinalScreen(screen, score)
+    finish.make()
+
+    while running:
+        clock.tick(const.FPS)
+        for event in pygame.event.get():
+            finish.handle_event(event)
+        screen.fill(const.BLACK)
+        finish.draw()
+        pygame.display.update()
+        running = finish.running
+
+    game_start()
 
 
 connections = database.get_connections("stats/data.db")
