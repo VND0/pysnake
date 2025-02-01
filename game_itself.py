@@ -6,119 +6,56 @@ import pygame
 
 import constants as const
 import funcs
+from inteface_components import StatusBar
 
 
-class CloseButton(pygame.sprite.Sprite):
-    def __init__(self, *groups):
-        super().__init__(*groups)
-        self.x, self.y = 3, 3
-        self.width = self.height = const.STATUS_BAR_H - self.y * 2
-        self.frames = []
-        self.index = 0
-        self.get_frames()
-        self.image = self.frames[self.index]
-        self.rect = self.image.get_rect().move(self.x, self.y)
-
-        self.skip = 0
-
-    def get_frames(self):
-        rows, cols, side = 7, 6, 32
-        total = 38
-        image = funcs.load_image("cross.png", False)
-        counter = 0
-
-        rect = pygame.Rect(0, 0, image.get_width() // cols, image.get_height() // rows)
-
-        for y in range(rows):
-            for x in range(cols):
-                counter += 1
-                if counter > total:
-                    return
-                frame = pygame.transform.scale(
-                    image.subsurface(pygame.Rect((x * rect.w, y * rect.h), rect.size)),
-                    (self.width, self.height)
-                )
-                self.frames.append(frame)
-
-    def update(self, *args, **kwargs):
-        self.skip += 1
-        if self.skip <= 6:
-            return
-        self.skip = 0
-
-        self.index = (self.index + 1) % len(self.frames)
-        self.image = self.frames[self.index]
+class SnakeGameOverError(Exception):
+    pass
 
 
-class Lattice(pygame.sprite.Sprite):
-    def __init__(self, *groups):
-        super().__init__(*groups)
-        w = const.WIDTH
-        h = const.STATUS_BAR_H
-        content = pygame.Surface((w, h))
-        pygame.draw.rect(content, const.BLUE, (0, 0, w, h), 2)
-        pygame.draw.line(content, const.BLUE, (h, 0), (h, h), 2)
-        self.image = content
-        self.rect = content.get_rect()
+class Head(pygame.Surface):
+    def __init__(self, previous: tuple[int, int]):
+        self.image = funcs.load_image("head_right.png")
+        super().__init__(self.image.get_size())
+        self.blit(self.image, (0, 0))
+        self.previous = previous
+
+    def rotate(self, angle) -> None:
+        th = threading.Thread(target=self.__rotate, args=(angle,))
+        th.start()
+
+    def __rotate(self, angle: int) -> None:
+        clock = pygame.time.Clock()
+        angle_per_frame = angle / (const.SEC_PER_TILE * const.FPS)
+        current_angle = 0
+
+        # self.copy() тут не работает
+        original = pygame.Surface(self.get_size())
+        original.blit(self, (0, 0))
+
+        while abs(current_angle) < abs(angle):
+            current_angle += angle_per_frame
+            if abs(current_angle) > abs(angle):
+                current_angle = angle
+
+            rotated = pygame.transform.rotate(original, current_angle)
+            self.fill(const.BLACK)
+            self.blit(rotated, (0, 0))
+
+            clock.tick(const.FPS)
 
 
-class Score(pygame.sprite.Sprite):
-    def __init__(self, *groups):
-        super().__init__(*groups)
-        self.font = pygame.font.Font(None, 25)
-        self.w = const.WIDTH - 4 - const.STATUS_BAR_H
-        self.h = const.STATUS_BAR_H - 4
-        self.score = -1
-        self.increment()
-
-    def increment(self):
-        self.score += 1
-        content = pygame.Surface((self.w, self.h))
-
-        text = self.font.render("Счет:", 1, const.GREEN)
-        content.blit(text, (10, (self.h - text.get_height()) / 2))
-
-        text = self.font.render(str(self.score), 1, const.GREEN)
-        content.blit(text, (self.w - 10 - text.get_width(), (self.h - text.get_height()) / 2))
-
-        self.image = content
-        self.rect = content.get_rect().move(4 + const.STATUS_BAR_H, 0)
+class Apple(pygame.Surface):
+    def __init__(self):
+        self.image = funcs.load_image("apple.png")
+        super().__init__(self.image.get_size())
+        self.blit(self.image, (0, 0))
 
 
-class StatusBar:
-    def __init__(self, close_callback: Callable[[], Any], screen: pygame.Surface):
-        self.callback = close_callback
-        self.width = const.WIDTH
-        self.height = const.STATUS_BAR_H
-
-        self.screen = screen
-        self.all_sprites = pygame.sprite.Group()
-
-    def make(self):
-        Lattice(self.all_sprites)
-        self.close_button = CloseButton(self.all_sprites)
-        self.score = Score(self.all_sprites)
-
-    def draw(self):
-        self.all_sprites.draw(self.screen)
-        self.all_sprites.update()
-
-    def get_click(self, pos: tuple[int, int]):
-        if self.close_button.rect.collidepoint(*pos):
-            self.callback()
-
-    def score_increment(self):
-        self.score.increment()
-
-
-class SnakePart(pygame.Surface):
-    def __init__(self, size: tuple[int, int] | None, image: pygame.Surface | None,
-                 previous: tuple[int | None, int | None]):
-        if size is None and image is None:
-            raise ValueError("Нет данных для создания объекта")
-        super().__init__(size or image.get_size())
-        if image is not None:
-            self.blit(image, (0, 0))
+class BodyPart(pygame.Surface):
+    def __init__(self, previous: tuple[int | None, int | None]):
+        super().__init__((const.TILE_SIZE,) * 2)
+        self.fill(const.BODY_COL)
         self.previous = previous
 
 
@@ -135,44 +72,17 @@ class AngleGoToTile(pygame.Surface):
         self.fill(const.ANGLE_GOTO_COL)
 
 
-BOARD_CONTENT = list[list[None | pygame.Surface | SnakePart | AngleTopTile | AngleGoToTile]]
-
-
-def rotate_surface(angle: int, position: tuple[int, int], board: BOARD_CONTENT) -> None:
-    def rotate():
-        clock = pygame.time.Clock()
-        angle_per_frame = angle / (const.SEC_PER_TILE * const.FPS)
-        current_angle = 0
-
-        y, x = position
-        to_be_turned = board[y][x]
-        original = SnakePart(to_be_turned.get_size(), to_be_turned, board[y][x].previous)
-        while abs(current_angle) < abs(angle):
-            current_angle += angle_per_frame
-            if abs(current_angle) > abs(angle):
-                current_angle = angle
-
-            rotated_surface = pygame.transform.rotate(original, current_angle)
-            to_be_turned.fill(const.BLACK)
-            to_be_turned.blit(rotated_surface, (0, 0))
-
-            clock.tick(const.FPS)
-
-    thread = threading.Thread(target=rotate)
-    thread.start()
+BOARD_CONTENT = list[list[None | pygame.Surface | BodyPart | AngleTopTile | AngleGoToTile | Apple | Head]]
 
 
 class Board:
-    def __init__(self, height: int, width: int, margin_top: int, cell_size: int, on_earned_score: Callable[[], Any]):
+    def __init__(self, height: int, width: int, on_earned_score: Callable[[], Any]):
         self.board: BOARD_CONTENT = [
             [None for _ in range(width)] for _ in range(height)
         ]
         self.height = height
         self.width = width
-        self.mt = margin_top
-        self.cell_size = cell_size
-        self.head_image = funcs.load_image("head_right.png")
-        self.apple_image = funcs.load_image("apple.png")
+        self.margin_top = const.STATUS_BAR_H
         self.earned_score = on_earned_score
 
         self.angle_top: tuple[int, int] | None = None
@@ -184,11 +94,10 @@ class Board:
     def init_snake(self):
         head_y, head_x = 3, 5
 
-        head = SnakePart(None, self.head_image, (head_y, head_x - 1))
+        head = Head((head_y, head_x - 1))
         self.board[head_y][head_x] = head
 
-        body = SnakePart((self.cell_size,) * 2, None, (head_y, head_x - 2))
-        body.fill(const.BODY_COL)
+        body = BodyPart((head_y, head_x - 2))
         self.board[head_y][head_x - 1] = body
 
         body = body.copy()
@@ -219,7 +128,7 @@ class Board:
             if not (2 <= y < len(self.board) - 2 and 2 <= x < len(self.board[0])):
                 continue
             if self.board[y][x] is None:
-                self.board[y][x] = self.apple_image.subsurface(self.apple_image.get_rect())
+                self.board[y][x] = Apple()
                 break
 
     def can_go_there(self, x0: int, y0: int, x1: int, y1: int, direction: const.DIRECTION) -> bool:
@@ -260,12 +169,12 @@ class Board:
     def render(self, screen: pygame.Surface):
         for y in range(self.height):
             for x in range(self.width):
-                x_pos, y_pos = self.cell_size * x, self.mt + self.cell_size * y
+                x_pos, y_pos = const.TILE_SIZE * x, self.margin_top + const.TILE_SIZE * y
                 content = self.board[y][x]
                 if content is not None:
                     screen.blit(content, (x_pos, y_pos))
                 else:
-                    rect = (x_pos, y_pos) + (self.cell_size,) * 2
+                    rect = (x_pos, y_pos) + (const.TILE_SIZE,) * 2
                     if (x + y) % 2 == 0:
                         color = const.CELL_COL_1
                     else:
@@ -279,22 +188,22 @@ class Board:
 
     def get_cell(self, pos: tuple[int, int]) -> tuple[int, int] | None:
         mouse_x, mouse_y = pos
-        x = mouse_x // self.cell_size
-        y = (mouse_y - self.mt) // self.cell_size
+        x = mouse_x // const.TILE_SIZE
+        y = (mouse_y - self.margin_top) // const.TILE_SIZE
         if not (0 <= x < self.width and 0 <= y < self.height):
             return None
         return x, y
 
     def on_click(self, pos: tuple[int, int], button) -> None:
         clck_x, clck_y = pos
-        if button != pygame.BUTTON_LEFT or self.board[clck_y][clck_x] is SnakePart:
+        if button != pygame.BUTTON_LEFT or self.board[clck_y][clck_x] is BodyPart:
             return
 
         if not self.board[clck_y][clck_x]:
             if not self.angle_top:
                 if self.can_go_there(*self.head_pos[::-1], *pos, self.direction):
                     self.angle_top = pos
-                    self.board[clck_y][clck_x] = AngleTopTile((self.cell_size,) * 2, None)
+                    self.board[clck_y][clck_x] = AngleTopTile((const.TILE_SIZE,) * 2, None)
             elif not self.angle_goto:
                 at_x, at_y = self.angle_top
                 direction = self.get_next_direction(at_x, at_y, clck_x, clck_y)
@@ -303,7 +212,7 @@ class Board:
                     return
 
                 self.angle_goto = pos
-                self.board[clck_y][clck_x] = AngleGoToTile((self.cell_size,) * 2)
+                self.board[clck_y][clck_x] = AngleGoToTile((const.TILE_SIZE,) * 2)
                 self.board[at_y][at_x].next_direction = direction
             else:
                 # Если все данные угла поворота уже есть, то мы считаем, что пользователь хочет пойти по-другому
@@ -346,13 +255,11 @@ class Board:
                 self.del_angle_top()
             self.board[next_y][next_x] = head
             self.move_snake_after_head(h_x, h_y, head)
-        # Попали на яблоко
-        elif self.board[next_y][next_x] and self.board[next_y][next_x].get_parent() == self.apple_image:
+        elif type(self.board[next_y][next_x]) is Apple:
             self.earned_score()
-            # Двигаем голову, вставляем новый кусочек змеи между
+            # Двигаем голову, вставляем новый кусочек змеи между, остальную змейку не двигаем
             self.board[next_y][next_x] = head
-            new_part = SnakePart((self.cell_size,) * 2, None, head.previous)
-            new_part.fill(const.BODY_COL)
+            new_part = BodyPart(head.previous)
             self.board[h_y][h_x] = new_part
             head.previous = (h_y, h_x)
 
@@ -367,12 +274,14 @@ class Board:
     def on_direction_change(self, prev_direction: const.DIRECTION, next_direction: const.DIRECTION):
         all_dirs = const.R + const.U + const.L + const.D
         # Тут R->U->L->D->R..., как на тригонометрической окружности почти
-        # Если идем по ней - угол 90, иначе - -90
+        # Если идем по ней - угол +90, иначе - -90
         if all_dirs[(all_dirs.index(prev_direction) + 1) % len(all_dirs)] == next_direction:
             angle = 90
         else:
             angle = -90
-        rotate_surface(angle, self.head_pos, self.board)
+
+        h_y, h_x = self.head_pos
+        self.board[h_y][h_x].rotate(angle)
 
     def move_snake_after_head(self, h_x, h_y, head):
         y, x = head.previous
@@ -398,10 +307,6 @@ class Board:
         self.board[goto_y][goto_x] = self.angle_goto = None
 
 
-class SnakeGameOverError(Exception):
-    pass
-
-
 class Game:
     def __init__(self, screen: pygame.Surface, difficulty: int):
         self.screen = screen
@@ -421,8 +326,7 @@ class Game:
     def make(self):
         self.status_bar = StatusBar(self.close_by_button, self.screen)
         self.status_bar.make()
-        self.board = Board(const.TILES_VERT, const.TILES_HORIZ, const.STATUS_BAR_H, const.TILE_SIZE,
-                           self.increment_score)
+        self.board = Board(const.TILES_VERT, const.TILES_HORIZ, self.increment_score)
 
     def increment_score(self) -> None:
         self.score += 1
