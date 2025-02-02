@@ -21,12 +21,16 @@ class Head(pygame.Surface):
         super().__init__(self.image.get_size())
         self.blit(self.image, (0, 0))
         self.previous = previous
+        self.turn_locked = False
 
     def rotate(self, angle) -> None:
         th = threading.Thread(target=self.__rotate, args=(angle,))
         th.start()
 
     def __rotate(self, angle: int) -> None:
+        while self.turn_locked:
+            pass
+        self.turn_locked = True
         clock = pygame.time.Clock()
         angle_per_frame = angle / (const.SEC_PER_TILE * const.FPS)
         current_angle = 0
@@ -45,6 +49,7 @@ class Head(pygame.Surface):
             self.blit(rotated, (0, 0))
 
             clock.tick(const.FPS)
+        self.turn_locked = False
 
 
 class Apple(pygame.Surface):
@@ -224,17 +229,17 @@ class Board:
                 self.on_click(pos, button)
 
     def update(self):
-        h_y, h_x = self.head_pos
-        head = self.board[h_y][h_x]
+        head_y, head_x = self.head_pos
+        head = self.board[head_y][head_x]
 
         if self.direction == const.R:
-            next_y, next_x = h_y, h_x + 1
+            next_y, next_x = head_y, head_x + 1
         elif self.direction == const.U:
-            next_y, next_x = h_y - 1, h_x
+            next_y, next_x = head_y - 1, head_x
         elif self.direction == const.L:
-            next_y, next_x = h_y, h_x - 1
+            next_y, next_x = head_y, head_x - 1
         else:
-            next_y, next_x = h_y + 1, h_x
+            next_y, next_x = head_y + 1, head_x
 
         # Игрок врезался в границу поля - проиграл
         if not (0 <= next_x < len(self.board[0])):
@@ -259,20 +264,20 @@ class Board:
             else:
                 self.del_angle_top()
             self.board[next_y][next_x] = head
-            self.move_snake_after_head(h_x, h_y, head)
+            self.move_snake_after_head(head_x, head_y, head)
         elif type(next_tile) is Apple:
             self.earned_score()
             # Двигаем голову, вставляем новый кусочек змеи между, остальную змейку не двигаем
             self.board[next_y][next_x] = head
             new_part = BodyPart(head.previous)
-            self.board[h_y][h_x] = new_part
-            head.previous = (h_y, h_x)
+            self.board[head_y][head_x] = new_part
+            head.previous = (head_y, head_x)
             self.add_apple()
         elif type(next_tile) is BodyPart:
             raise SnakeGameOverException(state="loss")  # Врезались в себя
         else:
             self.board[next_y][next_x] = head
-            self.move_snake_after_head(h_x, h_y, head)
+            self.move_snake_after_head(head_x, head_y, head)
 
         if change_direction:
             self.on_direction_change(current_direction, next_direction)
@@ -289,21 +294,20 @@ class Board:
         h_y, h_x = self.head_pos
         self.board[h_y][h_x].rotate(angle)
 
-    def move_snake_after_head(self, h_x, h_y, head):
-        y, x = head.previous
-        head.previous = (h_y, h_x)
-        self.board[h_y][h_x] = None
-        to_x, to_y = h_x, h_y
-        while x is not None and y is not None:
-            part = self.board[y][x]
+    def move_snake_after_head(self, goto_x: int, goto_y: int, head: Head):
+        current_y, current_x = head.previous
+        head.previous = (goto_y, goto_x)
+        self.board[goto_y][goto_x] = None
+        while current_y is not None and current_x is not None:
+            part = self.board[current_y][current_x]
             # Если змейка замыкает ломаную, то эта проверка позволяет избежать бесконечного цикла
             if type(part) is Head or part is None:
                 break
-            self.board[to_y][to_x] = part
-            self.board[y][x] = None
-            to_x, to_y = x, y
-            y, x = part.previous
-            part.previous = (to_y, to_x)
+            self.board[goto_y][goto_x] = part
+            self.board[current_y][current_x] = None
+            goto_x, goto_y = current_x, current_y
+            current_y, current_x = part.previous
+            part.previous = (goto_y, goto_x)
 
     def del_angle_top(self):
         at_x, at_y = self.angle_top
