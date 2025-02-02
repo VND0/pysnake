@@ -321,6 +321,7 @@ class Game:
         self.score = 0
         self.goto_after: Literal["menu", "finish"] = "menu"
         self.game_over_state = None
+        self.paused = False
         self.make()
 
     def handle_event(self, event: pygame.event.Event):
@@ -328,7 +329,10 @@ class Game:
             funcs.terminate()
         if event.type == pygame.MOUSEBUTTONDOWN:
             self.status_bar.get_click(event.pos)
-            self.board.get_click(event.pos, event.button)
+            if not self.paused:
+                self.board.get_click(event.pos, event.button)
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+            self.paused = not self.paused
 
     def make(self):
         self.status_bar = StatusBar(self.close_by_button, self.screen)
@@ -344,6 +348,8 @@ class Game:
         self.board.render(self.screen)
 
     def update(self):
+        if self.paused:
+            return
         try:
             self.board.update()
         except SnakeGameOverException as e:
