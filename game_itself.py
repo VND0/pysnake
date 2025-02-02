@@ -296,7 +296,8 @@ class Board:
         to_x, to_y = h_x, h_y
         while x is not None and y is not None:
             part = self.board[y][x]
-            if part is None:
+            # Если змейка замыкает ломаную, то эта проверка позволяет избежать бесконечного цикла
+            if type(part) is Head or part is None:
                 break
             self.board[to_y][to_x] = part
             self.board[y][x] = None
