@@ -9,8 +9,10 @@ import funcs
 from inteface_components import StatusBar
 
 
-class SnakeGameOverError(Exception):
-    pass
+class SnakeGameOverException(Exception):
+    def __init__(self, state: Literal["win", "loss"], *args):
+        super().__init__(*args)
+        self.state = state
 
 
 class Head(pygame.Surface):
@@ -120,7 +122,7 @@ class Board:
                     got_none = True
                     break
         if not got_none:
-            raise SnakeGameOverError
+            raise SnakeGameOverException(state="win")  # Если яблоку негде появиться, то игрок побеждает
 
         while True:
             y = randrange(0, self.height)
@@ -234,10 +236,11 @@ class Board:
         else:
             next_y, next_x = h_y + 1, h_x
 
+        # Игрок врезался в границу поля - проиграл
         if not (0 <= next_x < len(self.board[0])):
-            raise SnakeGameOverError
+            raise SnakeGameOverException(state="loss")
         if not (0 <= next_y < len(self.board)):
-            raise SnakeGameOverError
+            raise SnakeGameOverException(state="loss")
 
         change_direction = False
         self.head_pos = (next_y, next_x)
@@ -266,7 +269,7 @@ class Board:
             head.previous = (h_y, h_x)
             self.add_apple()
         elif type(next_tile) is BodyPart:
-            raise SnakeGameOverError  # Врезались в себя
+            raise SnakeGameOverException(state="loss")  # Врезались в себя
         else:
             self.board[next_y][next_x] = head
             self.move_snake_after_head(h_x, h_y, head)
@@ -317,6 +320,7 @@ class Game:
         self.running = True
         self.score = 0
         self.goto_after: Literal["menu", "finish"] = "menu"
+        self.game_over_state = None
         self.make()
 
     def handle_event(self, event: pygame.event.Event):
@@ -342,7 +346,8 @@ class Game:
     def update(self):
         try:
             self.board.update()
-        except SnakeGameOverError:
+        except SnakeGameOverException as e:
+            self.game_over_state = e.state
             self.game_over()
 
     def close_by_button(self):

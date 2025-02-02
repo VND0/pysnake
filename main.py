@@ -1,3 +1,5 @@
+from typing import Literal
+
 import pygame
 
 import constants as const
@@ -50,13 +52,13 @@ def run_game(difficulty: int) -> None:
     if game.goto_after == "menu":
         game_start()
     else:
-        finish_screen(game.score)
+        finish_screen(game.score, game.game_over_state)
 
 
-def finish_screen(score: int) -> None:
+def finish_screen(score: int, state: Literal["win", "loss"]) -> None:
     running = True
     finish = final_screen.FinalScreen(screen, score)
-    finish.make()
+    finish.make(state)
 
     while running:
         clock.tick(const.FPS)

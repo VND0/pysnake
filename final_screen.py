@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Literal
 
 import pygame
 
@@ -8,11 +8,11 @@ from stats import database as db
 
 
 class GameOverText(pygame.sprite.Sprite):
-    def __init__(self, *groups):
+    def __init__(self, state: Literal["win", "loss"], *groups):
         super().__init__(*groups)
 
         font = pygame.font.Font(None, 50)
-        txt = font.render("Игра окончена!", 1, const.WHITE)
+        txt = font.render("Игра окончена!" if state == "loss" else "Вы победили!", 1, const.WHITE)
         w, h = txt.get_size()
         x = (const.WIDTH - w) // 2
         y = const.HEIGHT // 4 - h
@@ -82,8 +82,8 @@ class FinalScreen:
         if current_max < self.score:
             db.set_best_score(conn, self.score)
 
-    def make(self):
-        GameOverText(self.all_sprites)
+    def make(self, state: Literal["win", "loss"]):
+        GameOverText(state, self.all_sprites)
         ResultScore(self.score, self.all_sprites)
         self.goto_menu_btn = GoToMenuButton(self.btn_clicked, self.all_sprites)
 
