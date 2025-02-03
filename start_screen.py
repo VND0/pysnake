@@ -38,7 +38,7 @@ class Rules(pygame.sprite.Sprite):
     def make(self):
         content = pygame.Surface((self.width, self.height))
         rules_text = ["Игрок нажимает мышью", "на клетку, вершину", "угла поворота, затем -",
-                      "в ту сторону, куда", "он хочет повернуть.", "", "Отмена - по ESC"]
+                      "в ту сторону, куда", "он хочет повернуть.", "", "Пауза - пробел"]
         height_incr = 0
         for line in rules_text:
             text = self.font.render(line, 1, const.RED)
