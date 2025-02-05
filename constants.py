@@ -13,6 +13,8 @@ BODY_COL = pygame.Color(91, 123, 249)
 CELL_COL_1 = pygame.Color(55, 56, 60)
 CELL_COL_2 = pygame.Color(40, 41, 44)
 
+OBSTACLE_COL = pygame.Color(225, 139, 134)
+
 SIZE = WIDTH, HEIGHT = 500, 405
 
 EASY, DIFFICULT = -1, 1

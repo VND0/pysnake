@@ -15,6 +15,12 @@ class SnakeGameOverException(Exception):
         self.state = state
 
 
+class Obstacle(pygame.Surface):
+    def __init__(self):
+        super().__init__((const.TILE_SIZE,) * 2)
+        self.fill(const.OBSTACLE_COL)
+
+
 class Head(pygame.Surface):
     def __init__(self, previous: tuple[int, int]):
         self.image = funcs.load_image("head.png")
@@ -83,7 +89,7 @@ BOARD_CONTENT = list[list[None | pygame.Surface | BodyPart | AngleTopTile | Angl
 
 
 class Board:
-    def __init__(self, height: int, width: int, on_earned_score: Callable[[], Any]):
+    def __init__(self, height: int, width: int, on_earned_score: Callable[[], Any], difficulty: int):
         self.board: BOARD_CONTENT = [
             [None for _ in range(width)] for _ in range(height)
         ]
@@ -97,6 +103,22 @@ class Board:
 
         self.init_snake()
         self.add_apple()
+        if difficulty == const.DIFFICULT:
+            self.create_obstacles()
+
+    def create_obstacles(self):
+        with open("difficult_lvl_obstacles") as f:
+            lines = f.readlines()
+            print(len(lines))
+            print(len(lines[0]))
+            if len(lines) != len(self.board):
+                raise ValueError("Карта не подходит под игровое поле.")
+            for row, line in enumerate(map(str.strip, lines)):
+                if len(line) != len(self.board[row]):
+                    raise ValueError("Карта не подходит под игровое поле.")
+                for col, cell in enumerate(line):
+                    if cell == "#":
+                        self.board[row][col] = Obstacle()
 
     def init_snake(self):
         head_y, head_x = 3, 5
@@ -273,8 +295,8 @@ class Board:
             self.board[head_y][head_x] = new_part
             head.previous = (head_y, head_x)
             self.add_apple()
-        elif type(next_tile) is BodyPart:
-            raise SnakeGameOverException(state="loss")  # Врезались в себя
+        elif type(next_tile) in (BodyPart, Obstacle):
+            raise SnakeGameOverException(state="loss")
         else:
             self.board[next_y][next_x] = head
             self.move_snake_after_head(head_x, head_y, head)
@@ -342,7 +364,7 @@ class Game:
     def make(self):
         self.status_bar = StatusBar(self.close_by_button, self.screen)
         self.status_bar.make()
-        self.board = Board(const.TILES_VERT, const.TILES_HORIZ, self.increment_score)
+        self.board = Board(const.TILES_VERT, const.TILES_HORIZ, self.increment_score, self.difficulty)
 
     def increment_score(self) -> None:
         self.score += 1
