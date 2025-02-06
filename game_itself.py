@@ -109,8 +109,6 @@ class Board:
     def create_obstacles(self):
         with open("difficult_lvl_obstacles") as f:
             lines = f.readlines()
-            print(len(lines))
-            print(len(lines[0]))
             if len(lines) != len(self.board):
                 raise ValueError("Карта не подходит под игровое поле.")
             for row, line in enumerate(map(str.strip, lines)):
