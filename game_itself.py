@@ -6,7 +6,7 @@ import pygame
 import constants as const
 import funcs
 from field_objects import BodyPart, AngleTopTile, AngleGoToTile, Apple, Head, Obstacle
-from inteface_components import StatusBar
+from inteface_components import StatusBar, Pause
 
 
 class SnakeGameOverException(Exception):
@@ -127,16 +127,17 @@ class Board:
         for y in range(self.height):
             for x in range(self.width):
                 x_pos, y_pos = const.TILE_SIZE * x, self.margin_top + const.TILE_SIZE * y
+
+                rect = (x_pos, y_pos) + (const.TILE_SIZE,) * 2
+                if (x + y) % 2 == 0:
+                    color = const.CELL_COL_1
+                else:
+                    color = const.CELL_COL_2
+                pygame.draw.rect(screen, color, rect)
+
                 content = self.board[y][x]
                 if content is not None:
                     screen.blit(content, (x_pos, y_pos))
-                else:
-                    rect = (x_pos, y_pos) + (const.TILE_SIZE,) * 2
-                    if (x + y) % 2 == 0:
-                        color = const.CELL_COL_1
-                    else:
-                        color = const.CELL_COL_2
-                    pygame.draw.rect(screen, color, rect)
 
     def get_click(self, pos: tuple[int, int], button):
         cell = self.get_cell(pos)
@@ -270,6 +271,9 @@ class Board:
 
 class Game:
     def __init__(self, screen: pygame.Surface, difficulty: int):
+        self.pause_group = pygame.sprite.Group()
+        Pause(self.pause_group)
+
         self.screen = screen
         self.difficulty = difficulty
         self.running = True
@@ -299,8 +303,10 @@ class Game:
         self.status_bar.score_increment()
 
     def draw(self):
-        self.status_bar.draw()
         self.board.render(self.screen)
+        if self.paused:
+            self.pause_group.draw(self.screen)
+        self.status_bar.draw()
 
     def update(self):
         if self.paused:

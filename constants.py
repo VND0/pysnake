@@ -30,3 +30,5 @@ SEC_PER_TILE = 0.3
 
 ANGLE_TOP_COL = pygame.Color(240, 167, 50)
 ANGLE_GOTO_COL = pygame.Color(149, 113, 57)
+
+PAUSE_BG = pygame.Color(0, 0, 0, 128)

@@ -10,7 +10,7 @@ from stats import database
 
 pygame.init()
 pygame.display.set_caption("Змейка")
-screen = pygame.display.set_mode(const.SIZE)
+screen = pygame.display.set_mode(const.SIZE, pygame.SRCALPHA)
 clock = pygame.time.Clock()
 
 

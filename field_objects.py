@@ -15,7 +15,7 @@ class Obstacle(pygame.Surface):
 class Head(pygame.Surface):
     def __init__(self, previous: tuple[int, int]):
         self.image = funcs.load_image("head.png")
-        super().__init__(self.image.get_size())
+        super().__init__(self.image.get_size(), pygame.SRCALPHA)
         self.blit(self.image, (0, 0))
         self.previous = previous
         self.turn_locked = False
@@ -33,7 +33,7 @@ class Head(pygame.Surface):
         current_angle = 0
 
         # self.copy() тут не работает
-        original = pygame.Surface(self.get_size())
+        original = pygame.Surface(self.get_size(), pygame.SRCALPHA)
         original.blit(self, (0, 0))
 
         while abs(current_angle) < abs(angle):
@@ -42,7 +42,7 @@ class Head(pygame.Surface):
                 current_angle = angle
 
             rotated = pygame.transform.rotate(original, current_angle)
-            self.fill(const.BLACK)
+            self.fill((0, 0, 0, 0))  # Прозрачные пиксели
             self.blit(rotated, (0, 0))
 
             clock.tick(const.FPS)
@@ -52,7 +52,7 @@ class Head(pygame.Surface):
 class Apple(pygame.Surface):
     def __init__(self):
         self.image = funcs.load_image("apple.png")
-        super().__init__(self.image.get_size())
+        super().__init__(self.image.get_size(), pygame.SRCALPHA)
         self.blit(self.image, (0, 0))
 
 

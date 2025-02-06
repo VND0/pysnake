@@ -10,8 +10,8 @@ def load_image(name: str, transform=True) -> pygame.Surface:
     fullname = os.path.join("resources", name)
     if not os.path.isfile(fullname):
         print(f"Файл с изображением '{fullname}' не найден")
-        sys.exit()
-    image = pygame.image.load(fullname).convert_alpha()
+        terminate()
+    image = pygame.image.load(fullname)
     if transform:
         image = pygame.transform.scale(image, (const.TILE_SIZE,) * 2)
     return image

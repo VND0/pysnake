@@ -107,3 +107,21 @@ class StatusBar:
 
     def score_increment(self):
         self.score.increment()
+
+
+class Pause(pygame.sprite.Sprite):
+    def __init__(self, *groups):
+        super().__init__(*groups)
+        image = self.make()
+        self.image = image
+        self.rect = image.get_rect()
+
+    def make(self) -> pygame.Surface:
+        image = pygame.Surface(const.SIZE, pygame.SRCALPHA)
+        image.fill(const.PAUSE_BG)
+
+        font = pygame.font.Font(None, 60)
+        text = font.render("Пауза", 1, const.WHITE)
+        image.blit(text, ((const.WIDTH - text.get_width()) / 2, (const.HEIGHT - text.get_height()) / 2))
+
+        return image
