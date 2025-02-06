@@ -54,3 +54,5 @@
 Код написан на Python 3 с использованием библиотеки Pygame. Присутствует работа с базой данных: движок СУБД - sqlite3, в
 коде используется одноименная библиотека. Для быстрой установки всех зависимостей нужной версии есть файл
 requirements.txt.
+
+[ссылка на перезентацию](https://docs.google.com/presentation/d/1_HK9WNmuBeKbmQX8QtlA5aY31sI66fwx9j9TipN0ZTk/edit?usp=sharing)
