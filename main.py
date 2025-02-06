@@ -56,6 +56,7 @@ def run_game(difficulty: int) -> None:
 
 
 def finish_screen(score: int, state: Literal["win", "loss"]) -> None:
+    """Финальный экран. Содержит результат, кнопку возврата."""
     running = True
     finish = final_screen.FinalScreen(screen, score)
     finish.make(state)
