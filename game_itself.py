@@ -1,3 +1,4 @@
+from copy import copy
 from random import randrange
 from typing import Callable, Any, Literal
 
@@ -5,7 +6,7 @@ import pygame
 
 import constants as const
 import funcs
-from field_objects import BodyPart, AngleTopTile, AngleGoToTile, Apple, Head, Obstacle
+from field_objects import BodyPart, AngleTopTile, AngleGoToTile, Apple, Head, Obstacle, Point, Size
 from inteface_components import StatusBar, Pause
 
 
@@ -28,8 +29,8 @@ class Board:
         self.margin_top = const.STATUS_BAR_H
         self.earned_score = on_earned_score
 
-        self.angle_top: tuple[int, int] | None = None
-        self.angle_goto: tuple[int, int] | None = None
+        self.angle_top: Point | None = None
+        self.angle_goto: Point | None = None
 
         self.init_snake()
         self.add_apple()
@@ -49,23 +50,24 @@ class Board:
                         self.board[row][col] = Obstacle()
 
     def init_snake(self):
-        head_y, head_x = 3, 5
+        # head_y, head_x = 3, 5
+        head_pos = Point(x=5, y=3)
 
-        head = Head((head_y, head_x - 1))
-        self.board[head_y][head_x] = head
+        head = Head(Point(y=head_pos.y, x=head_pos.x - 1))
+        self.board[head_pos.y][head_pos.x] = head
 
-        body = BodyPart((head_y, head_x - 2))
-        self.board[head_y][head_x - 1] = body
-
-        body = body.copy()
-        body.previous = (head_y, head_x - 3)
-        self.board[head_y][head_x - 2] = body
+        body = BodyPart(Point(y=head_pos.y, x=head_pos.x - 2))
+        self.board[head_pos.y][head_pos.x - 1] = body
 
         body = body.copy()
-        body.previous = (None, None)
-        self.board[head_y][head_x - 3] = body
+        body.previous = Point(y=head_pos.y, x=head_pos.x - 3)
+        self.board[head_pos.y][head_pos.x - 2] = body
+
+        body = body.copy()
+        body.previous = Point(x=None, y=None)
+        self.board[head_pos.y][head_pos.x - 3] = body
         self.direction = const.R
-        self.head_pos = (head_y, head_x)
+        self.head_pos = head_pos
 
     def add_apple(self):
         got_none = False
@@ -88,7 +90,9 @@ class Board:
                 self.board[y][x] = Apple()
                 break
 
-    def can_go_there(self, x0: int, y0: int, x1: int, y1: int, direction: const.DIRECTION) -> bool:
+    def can_go_there(self, p0: Point, p1: Point, direction: const.DIRECTION) -> bool:
+        x0, y0 = p0
+        x1, y1 = p1
         if direction == const.R:
             return y0 == y1 and x0 < x1
         elif direction == const.U:
@@ -98,7 +102,9 @@ class Board:
         elif direction == const.D:
             return x0 == x1 and y0 < y1
 
-    def get_next_direction(self, x0: int, y0: int, x1: int, y1: int) -> const.DIRECTION | None:
+    def get_next_direction(self, p0: Point, p1: Point) -> const.DIRECTION | None:
+        x0, y0 = p0
+        x1, y1 = p1
         direction = None
         if x0 == x1:
             if y0 < y1:
@@ -126,9 +132,9 @@ class Board:
     def render(self, screen: pygame.Surface):
         for y in range(self.height):
             for x in range(self.width):
-                x_pos, y_pos = const.TILE_SIZE * x, self.margin_top + const.TILE_SIZE * y
+                pos = Point(x=const.TILE_SIZE * x, y=self.margin_top + const.TILE_SIZE * y)
 
-                rect = (x_pos, y_pos) + (const.TILE_SIZE,) * 2
+                rect = tuple(pos) + (const.TILE_SIZE,) * 2
                 if (x + y) % 2 == 0:
                     color = const.CELL_COL_1
                 else:
@@ -137,22 +143,22 @@ class Board:
 
                 content = self.board[y][x]
                 if content is not None:
-                    screen.blit(content, (x_pos, y_pos))
+                    screen.blit(content, tuple(pos))
 
-    def get_click(self, pos: tuple[int, int], button):
+    def get_click(self, pos: Point, button):
         cell = self.get_cell(pos)
         if cell:
             self.on_click(cell, button)
 
-    def get_cell(self, pos: tuple[int, int]) -> tuple[int, int] | None:
+    def get_cell(self, pos: Point) -> Point | None:
         mouse_x, mouse_y = pos
         x = mouse_x // const.TILE_SIZE
         y = (mouse_y - self.margin_top) // const.TILE_SIZE
         if not (0 <= x < self.width and 0 <= y < self.height):
             return None
-        return x, y
+        return Point(x=x, y=y)
 
-    def on_click(self, pos: tuple[int, int], button) -> None:
+    def on_click(self, pos: Point, button) -> None:
         clck_x, clck_y = pos
         if button != pygame.BUTTON_LEFT or self.board[clck_y][clck_x] is BodyPart:
             return
@@ -161,16 +167,16 @@ class Board:
             if not self.angle_top:
                 if self.can_go_there(*self.head_pos[::-1], *pos, self.direction):
                     self.angle_top = pos
-                    self.board[clck_y][clck_x] = AngleTopTile((const.TILE_SIZE,) * 2, None)
+                    self.board[clck_y][clck_x] = AngleTopTile(Size(w=const.TILE_SIZE, h=const.TILE_SIZE), None)
             elif not self.angle_goto:
                 at_x, at_y = self.angle_top
-                direction = self.get_next_direction(at_x, at_y, clck_x, clck_y)
-                if direction is None or not self.can_go_there(at_x, at_y, clck_x, clck_y, direction):
+                direction = self.get_next_direction(self.angle_top, pos)
+                if direction is None or not self.can_go_there(self.angle_top, pos, direction):
                     self.angle_top = self.board[at_y][at_x] = None
                     return
 
                 self.angle_goto = pos
-                self.board[clck_y][clck_x] = AngleGoToTile((const.TILE_SIZE,) * 2)
+                self.board[clck_y][clck_x] = AngleGoToTile(Size(w=const.TILE_SIZE, h=const.TILE_SIZE))
                 self.board[at_y][at_x].next_direction = direction
             else:
                 # Если все данные угла поворота уже есть, то мы считаем, что пользователь хочет пойти по-другому
@@ -180,7 +186,7 @@ class Board:
                 self.on_click(pos, button)
 
     def update(self):
-        head_y, head_x = self.head_pos
+        head_x, head_y = self.head_pos
         head = self.board[head_y][head_x]
 
         if self.direction == const.R:
@@ -199,13 +205,13 @@ class Board:
             raise SnakeGameOverException(state="loss")
 
         change_direction = False
-        self.head_pos = (next_y, next_x)
+        self.head_pos = Point(y=next_y, x=next_x)
         current_direction = self.direction
 
         next_tile = self.board[next_y][next_x]
 
         # Попали на вершину угла поворота
-        if self.head_pos[::-1] == self.angle_top:
+        if self.head_pos == self.angle_top:
             if self.angle_goto:
                 change_direction = True
                 next_direction = next_tile.next_direction
@@ -215,20 +221,20 @@ class Board:
             else:
                 self.del_angle_top()
             self.board[next_y][next_x] = head
-            self.move_snake_after_head(head_x, head_y, head)
+            self.move_snake_after_head(copy(self.head_pos), head)
         elif type(next_tile) is Apple:
             self.earned_score()
             # Двигаем голову, вставляем новый кусочек змеи между, остальную змейку не двигаем
             self.board[next_y][next_x] = head
             new_part = BodyPart(head.previous)
             self.board[head_y][head_x] = new_part
-            head.previous = (head_y, head_x)
+            head.previous = copy(self.head_pos)
             self.add_apple()
         elif type(next_tile) in (BodyPart, Obstacle):
             raise SnakeGameOverException(state="loss")
         else:
             self.board[next_y][next_x] = head
-            self.move_snake_after_head(head_x, head_y, head)
+            self.move_snake_after_head(copy(self.head_pos), head)
 
         if change_direction:
             self.on_direction_change(current_direction, next_direction)
@@ -242,23 +248,23 @@ class Board:
         else:
             angle = -90
 
-        h_y, h_x = self.head_pos
+        h_x, h_y = self.head_pos
         self.board[h_y][h_x].rotate(angle)
 
-    def move_snake_after_head(self, goto_x: int, goto_y: int, head: Head):
-        current_y, current_x = head.previous
-        head.previous = (goto_y, goto_x)
-        self.board[goto_y][goto_x] = None
+    def move_snake_after_head(self, goto: Point, head: Head):
+        current_x, current_y = head.previous
+        head.previous = copy(goto)
+        self.board[goto.y][goto.x] = None
         while current_y is not None and current_x is not None:
             part = self.board[current_y][current_x]
             # Если змейка замыкает ломаную, то эта проверка позволяет избежать бесконечного цикла
             if type(part) is Head or part is None:
                 break
-            self.board[goto_y][goto_x] = part
+            self.board[goto.y][goto.x] = part
             self.board[current_y][current_x] = None
-            goto_x, goto_y = current_x, current_y
-            current_y, current_x = part.previous
-            part.previous = (goto_y, goto_x)
+            goto.x, goto.y = current_x, current_y
+            current_x, current_y = part.previous
+            part.previous = copy(goto)
 
     def del_angle_top(self):
         at_x, at_y = self.angle_top

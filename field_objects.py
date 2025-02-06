@@ -1,9 +1,37 @@
 import threading
+from numbers import Number
 
 import pygame
 
 import constants as const
 import funcs
+
+
+# Для однообразия
+class Point:
+    def __init__(self, *, x: int | None, y: int | None):
+        self.x = x
+        self.y = y
+
+    def __iter__(self):
+        return iter((self.x, self.y))
+
+    def __copy__(self):
+        return Point(x=self.x, y=self.y)
+
+    def __eq__(self, other: "Point"):
+        if other is None:
+            return False
+        return tuple(self) == tuple(other)
+
+
+class Size:
+    def __init__(self, *, w: Number, h: Number):
+        self.w = w
+        self.h = h
+
+    def __iter__(self):
+        return iter((self.w, self.h))
 
 
 class Obstacle(pygame.Surface):
@@ -13,7 +41,7 @@ class Obstacle(pygame.Surface):
 
 
 class Head(pygame.Surface):
-    def __init__(self, previous: tuple[int, int]):
+    def __init__(self, previous: Point):
         self.image = funcs.load_image("head.png")
         super().__init__(self.image.get_size(), pygame.SRCALPHA)
         self.blit(self.image, (0, 0))
@@ -27,12 +55,13 @@ class Head(pygame.Surface):
     def __rotate(self, angle: int) -> None:
         while self.turn_locked:
             pass
+        # Чтобы повторы происходили подряд. Их возможно максимум два во время игры
         self.turn_locked = True
         clock = pygame.time.Clock()
         angle_per_frame = angle / (const.SEC_PER_TILE * const.FPS)
         current_angle = 0
 
-        # self.copy() тут не работает
+        # self.copy() тут не срабатывает как надо
         original = pygame.Surface(self.get_size(), pygame.SRCALPHA)
         original.blit(self, (0, 0))
 
@@ -57,20 +86,20 @@ class Apple(pygame.Surface):
 
 
 class BodyPart(pygame.Surface):
-    def __init__(self, previous: tuple[int | None, int | None]):
+    def __init__(self, previous: Point):
         super().__init__((const.TILE_SIZE,) * 2)
         self.fill(const.BODY_COL)
         self.previous = previous
 
 
 class AngleTopTile(pygame.Surface):
-    def __init__(self, size: tuple[int, int], next_direction: const.DIRECTION | None):
-        super().__init__(size)
+    def __init__(self, size: Size, next_direction: const.DIRECTION | None):
+        super().__init__(tuple(size))
         self.fill(const.ANGLE_TOP_COL)
         self.next_direction = next_direction
 
 
 class AngleGoToTile(pygame.Surface):
-    def __init__(self, size: tuple[int, int]):
-        super().__init__(size)
+    def __init__(self, size: Size):
+        super().__init__(tuple(size))
         self.fill(const.ANGLE_GOTO_COL)

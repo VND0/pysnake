@@ -69,7 +69,7 @@ class FinalScreen:
         self.screen = screen
         self.score = score
 
-        self.connections = db.get_connections("stats/data.db")
+        self.connections = db.get_connections(const.PATH_TO_DB)
         self.update_score_in_db()
 
         self.all_sprites = pygame.sprite.Group()
