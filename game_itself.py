@@ -158,57 +158,60 @@ class Board:
             return None
         return Point(x=x, y=y)
 
-    def on_click(self, pos: Point, button) -> None:
-        clck_x, clck_y = pos
-        if button != pygame.BUTTON_LEFT or self.board[clck_y][clck_x] is BodyPart:
+    def on_click(self, clck: Point, button) -> None:
+        if button != pygame.BUTTON_LEFT or self.board[clck.y][clck.x] is BodyPart:
             return
 
-        if not self.board[clck_y][clck_x]:
+        if not self.board[clck.y][clck.x]:
             if not self.angle_top:
-                if self.can_go_there(*self.head_pos[::-1], *pos, self.direction):
-                    self.angle_top = pos
-                    self.board[clck_y][clck_x] = AngleTopTile(Size(w=const.TILE_SIZE, h=const.TILE_SIZE), None)
+                if self.can_go_there(self.head_pos, clck, self.direction):
+                    self.angle_top = copy(clck)
+                    self.board[clck.y][clck.x] = AngleTopTile(Size(w=const.TILE_SIZE, h=const.TILE_SIZE), None)
             elif not self.angle_goto:
                 at_x, at_y = self.angle_top
-                direction = self.get_next_direction(self.angle_top, pos)
-                if direction is None or not self.can_go_there(self.angle_top, pos, direction):
+                direction = self.get_next_direction(self.angle_top, clck)
+                if direction is None or not self.can_go_there(self.angle_top, clck, direction):
                     self.angle_top = self.board[at_y][at_x] = None
                     return
 
-                self.angle_goto = pos
-                self.board[clck_y][clck_x] = AngleGoToTile(Size(w=const.TILE_SIZE, h=const.TILE_SIZE))
+                self.angle_goto = clck
+                self.board[clck.y][clck.x] = AngleGoToTile(Size(w=const.TILE_SIZE, h=const.TILE_SIZE))
                 self.board[at_y][at_x].next_direction = direction
             else:
                 # Если все данные угла поворота уже есть, то мы считаем, что пользователь хочет пойти по-другому
                 # Просто удаляем обе клеточки
                 self.del_angle_top()
                 self.del_angle_goto()
-                self.on_click(pos, button)
+                self.on_click(clck, button)
 
     def update(self):
         head_x, head_y = self.head_pos
         head = self.board[head_y][head_x]
 
         if self.direction == const.R:
-            next_y, next_x = head_y, head_x + 1
+            # next_y, next_x = head_y, head_x + 1
+            next_pos = Point(y=head_y, x=head_x + 1)
         elif self.direction == const.U:
-            next_y, next_x = head_y - 1, head_x
+            # next_y, next_x = head_y - 1, head_x
+            next_pos = Point(y=head_y - 1, x=head_x)
         elif self.direction == const.L:
-            next_y, next_x = head_y, head_x - 1
+            # next_y, next_x = head_y, head_x - 1
+            next_pos = Point(y=head_y, x=head_x - 1)
         else:
-            next_y, next_x = head_y + 1, head_x
+            # next_y, next_x = head_y + 1, head_x
+            next_pos = Point(y=head_y + 1, x=head_x)
 
         # Игрок врезался в границу поля - проиграл
-        if not (0 <= next_x < len(self.board[0])):
+        if not (0 <= next_pos.x < len(self.board[0])):
             raise SnakeGameOverException(state="loss")
-        if not (0 <= next_y < len(self.board)):
+        if not (0 <= next_pos.y < len(self.board)):
             raise SnakeGameOverException(state="loss")
 
         change_direction = False
-        self.head_pos = Point(y=next_y, x=next_x)
+        self.head_pos = copy(next_pos)
         current_direction = self.direction
 
-        next_tile = self.board[next_y][next_x]
+        next_tile = self.board[next_pos.y][next_pos.x]
 
         # Попали на вершину угла поворота
         if self.head_pos == self.angle_top:
@@ -220,20 +223,20 @@ class Board:
                 self.direction = next_direction
             else:
                 self.del_angle_top()
-            self.board[next_y][next_x] = head
+            self.board[next_pos.y][next_pos.x] = head
             self.move_snake_after_head(copy(self.head_pos), head)
         elif type(next_tile) is Apple:
             self.earned_score()
             # Двигаем голову, вставляем новый кусочек змеи между, остальную змейку не двигаем
-            self.board[next_y][next_x] = head
-            new_part = BodyPart(head.previous)
+            self.board[next_pos.y][next_pos.x] = head
+            new_part = BodyPart(copy(head.previous))
             self.board[head_y][head_x] = new_part
             head.previous = copy(self.head_pos)
             self.add_apple()
         elif type(next_tile) in (BodyPart, Obstacle):
             raise SnakeGameOverException(state="loss")
         else:
-            self.board[next_y][next_x] = head
+            self.board[next_pos.y][next_pos.x] = head
             self.move_snake_after_head(copy(self.head_pos), head)
 
         if change_direction:
@@ -248,22 +251,22 @@ class Board:
         else:
             angle = -90
 
-        h_x, h_y = self.head_pos
-        self.board[h_y][h_x].rotate(angle)
+        hx, hy = self.head_pos
+        self.board[hy][hx].rotate(angle)
 
     def move_snake_after_head(self, goto: Point, head: Head):
-        current_x, current_y = head.previous
+        current = copy(head.previous)
         head.previous = copy(goto)
         self.board[goto.y][goto.x] = None
-        while current_y is not None and current_x is not None:
-            part = self.board[current_y][current_x]
+        while current:
+            part = self.board[current.y][current.x]
             # Если змейка замыкает ломаную, то эта проверка позволяет избежать бесконечного цикла
             if type(part) is Head or part is None:
                 break
             self.board[goto.y][goto.x] = part
-            self.board[current_y][current_x] = None
-            goto.x, goto.y = current_x, current_y
-            current_x, current_y = part.previous
+            self.board[current.y][current.x] = None
+            goto = copy(current)
+            current = copy(part.previous)
             part.previous = copy(goto)
 
     def del_angle_top(self):

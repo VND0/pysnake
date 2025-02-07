@@ -19,10 +19,16 @@ class Point:
     def __copy__(self):
         return Point(x=self.x, y=self.y)
 
-    def __eq__(self, other: "Point"):
+    def __eq__(self, other: "Point") -> bool:
         if other is None:
             return False
         return tuple(self) == tuple(other)
+
+    def __bool__(self) -> bool:
+        return bool(self.x and self.y)
+
+    def __repr__(self):
+        return f"Point(x={self.x}, y={self.y})"
 
 
 class Size:
